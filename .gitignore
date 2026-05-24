@@ -1,0 +1,40 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# Dataset files
+data/*.csv
+data/*.pcap
+data/*.pcapng
+data/*.zip
+data/*.tar.gz
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
