@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Exfiltration Detection — Project Roadmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --text-main: #c9d1d9;
+      --text-muted: #8b949e;
+      --border-color: #30363d;
+      --accent-color: #58a6ff;
+      --success-color: #2ea44f;
+      --success-glow: rgba(46, 164, 79, 0.15);
+      
+      /* Category Colors */
+      --color-setup: #9ca3af;
+      --color-pillar1: #3b82f6;
+      --color-pipeline: #10b981;
+      --color-ml1: #f97316;
+      --color-ml2: #ef4444;
+      --color-ml3: #a855f7;
+      --color-integration: #eab308;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--accent-color);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* Views */
+    #graph-view {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    #detail-view {
+      display: none;
+      min-height: 100vh;
+      width: 100vw;
+      padding-bottom: 80px;
+    }
+
+    /* Header & Navbar */
+    header {
+      background-color: #161b22;
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .header-titles h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f0f6fc;
+      margin-bottom: 4px;
+    }
+
+    .header-titles p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      background-color: #0d1117;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border-color);
+      justify-content: center;
+      font-size: 12px;
+      z-index: 9;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* SVG Canvas */
+    #svg-container {
+      flex: 1;
+      width: 100%;
+      position: relative;
+      cursor: grab;
+      background-color: #0b0e14;
+      overflow: hidden;
+    }
+
+    #svg-container:active {
+      cursor: grabbing;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+      user-select: none;
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .btn {
+      background-color: #21262d;
+      border: 1px solid var(--border-color);
+      color: #c9d1d9;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.2s, border-color 0.2s;
+    }
+
+    .btn:hover {
+      background-color: #30363d;
+      border-color: #8b949e;
+    }
+
+    /* Nodes styling inside foreignObject */
+    .node-card {
+      width: 100%;
+      height: 100%;
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+      user-select: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .node-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+    }
+
+    .node-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
+    }
+
+    .node-id {
+      font-weight: 700;
+      font-size: 14px;
+      color: #f0f6fc;
+      background-color: #21262d;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .complete-badge {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: var(--success-color);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 10px;
+      font-weight: bold;
+      box-shadow: 0 0 6px var(--success-color);
+    }
+
+    .node-card.completed .complete-badge {
+      display: flex;
+    }
+
+    .node-card.completed {
+      background-color: rgba(46, 164, 79, 0.04);
+      border-color: rgba(46, 164, 79, 0.6) !important;
+      box-shadow: 0 4px 10px var(--success-glow);
+    }
+
+    .node-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-main);
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* Edges and Highlighting */
+    .edge-path {
+      fill: none;
+      stroke: #30363d;
+      stroke-width: 2px;
+      transition: stroke 0.2s, stroke-width 0.2s, opacity 0.2s;
+    }
+
+    /* Hover States via JS */
+    .node-group, .edge-path {
+      transition: opacity 0.2s;
+    }
+
+    .dimmed {
+      opacity: 0.15 !important;
+    }
+
+    .highlighted.node-group .node-card {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .highlighted.edge-path {
+      stroke-width: 3.5px !important;
+      opacity: 1 !important;
+    }
+
+    /* Detail View Styling */
+    .detail-nav {
+      background-color: #161b22;
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .detail-nav-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .nav-node-info h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #f0f6fc;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-node-category {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .detail-nav-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .complete-checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: #21262d;
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+
+    .complete-checkbox-container:hover {
+      background-color: #30363d;
+    }
+
+    .complete-checkbox-container input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--success-color);
+      cursor: pointer;
+    }
+
+    .complete-checkbox-container span {
+      font-size: 13px;
+      font-weight: 500;
+      color: #c9d1d9;
+    }
+
+    /* Content Area */
+    .detail-content-wrapper {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+
+    .metadata-panel {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 32px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .meta-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-val {
+      font-size: 14px;
+      color: #f0f6fc;
+      font-weight: 500;
+    }
+
+    /* Markdown styling */
+    .markdown-body {
+      font-size: 16px;
+      color: var(--text-main);
+      line-height: 1.6;
+    }
+
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+      color: #f0f6fc;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .markdown-body h1 { font-size: 28px; }
+    .markdown-body h2 { font-size: 22px; }
+    .markdown-body h3 { font-size: 18px; border-bottom: none; padding-bottom: 0; }
+
+    .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body table, .markdown-body pre {
+      margin-bottom: 16px;
+    }
+
+    .markdown-body ul, .markdown-body ol {
+      padding-left: 24px;
+    }
+
+    .markdown-body li {
+      margin-bottom: 6px;
+    }
+
+    /* Checkbox list elements */
+    .markdown-body li input[type="checkbox"] {
+      margin-right: 8px;
+      accent-color: var(--accent-color);
+      transform: scale(1.1);
+      vertical-align: middle;
+    }
+
+    .markdown-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      background-color: rgba(110, 118, 129, 0.2);
+      padding: 3px 6px;
+      border-radius: 6px;
+      color: #ff7b72;
+    }
+
+    .markdown-body pre {
+      background-color: #161b22;
+      border: 1px solid var(--border-color);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+
+    .markdown-body pre code {
+      background-color: transparent;
+      padding: 0;
+      border-radius: 0;
+      color: #e6edf3;
+      font-size: 13px;
+    }
+
+    .markdown-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .markdown-body th, .markdown-body td {
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .markdown-body th {
+      background-color: #161b22;
+      color: #f0f6fc;
+      font-weight: 600;
+    }
+
+    .markdown-body tr:nth-child(even) {
+      background-color: rgba(110, 118, 129, 0.05);
+    }
+
+    /* Page Navigation Footer */
+    .page-navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .nav-btn-content {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-btn-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .nav-btn-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent-color);
+    }
+
+    .page-navigation .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Alert indicators */
+    .loading-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ff7b72;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    /* Zoom visual support */
+    .zoom-hint {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      background-color: rgba(22, 27, 34, 0.8);
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- GRAPH VIEW -->
+  <div id="graph-view">
+    <header>
+      <div class="header-titles">
+        <h1>DNS Exfiltration Detection — Project Roadmap</h1>
+        <p>29 nodes · Click any node to open its task page</p>
+      </div>
+      <div>
+        <button class="btn" onclick="resetView()">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 2a6 6 0 1 1-6 6 1 1 0 0 1 2 0 4 4 0 1 0 4-4V3a.5.5 0 0 1 .8-.4l3 2.5a.5.5 0 0 1 0 .8l-3 2.5A.5.5 0 0 1 8 8V6a6 6 0 0 1 0-4z"/>
+          </svg>
+          Fit Graph
+        </button>
+      </div>
+    </header>
+
+    <!-- Category Legend -->
+    <div class="legend" id="legend-container"></div>
+
+    <!-- Graph Canvas Container -->
+    <div id="svg-container">
+      <div class="zoom-hint">Scroll to zoom · Drag canvas to pan</div>
+      <svg id="roadmap-svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#30363d" id="arrow-path" />
+          </marker>
+          <marker id="arrow-highlighted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#58a6ff" />
+          </marker>
+        </defs>
+        <!-- The interactive viewport group -->
+        <g id="viewport-group">
+          <g id="edges-group"></g>
+          <g id="nodes-group"></g>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detail-view">
+    <div class="detail-nav">
+      <div class="detail-nav-left">
+        <a href="#" class="btn">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style="transform: rotate(180deg);">
+            <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06z"/>
+          </svg>
+          Back to Graph
+        </a>
+        <div class="nav-node-info">
+          <h2 id="detail-node-title">M0 — Title</h2>
+          <div class="nav-node-category" id="detail-node-category">SETUP</div>
+        </div>
+      </div>
+      <div class="detail-nav-right">
+        <label class="complete-checkbox-container">
+          <input type="checkbox" id="complete-checkbox">
+          <span>Mark complete</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="detail-content-wrapper">
+      <!-- Metadata box -->
+      <div class="metadata-panel">
+        <div class="meta-box">
+          <span class="meta-label">Estimated Time</span>
+          <span class="meta-val" id="meta-time">45 mins</span>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">Target Week</span>
+          <span class="meta-val" id="meta-week">Week 1</span>
+        </div>
+        <div class="meta-box">
+          <span class="meta-label">Dependencies</span>
+          <span class="meta-val" id="meta-deps">None</span>
+        </div>
+      </div>
+
+      <!-- Markdown output -->
+      <div id="markdown-container" class="markdown-body"></div>
+
+      <!-- Linear Next/Prev Navigation -->
+      <div class="page-navigation">
+        <button class="btn" id="prev-node-btn">
+          <div class="nav-btn-content" style="align-items: flex-start;">
+            <span class="nav-btn-label">Previous Node</span>
+            <span class="nav-btn-title" id="prev-node-title">None</span>
+          </div>
+        </button>
+        <button class="btn" id="next-node-btn">
+          <div class="nav-btn-content" style="align-items: flex-end;">
+            <span class="nav-btn-label">Next Node</span>
+            <span class="nav-btn-title" id="next-node-title">None</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Embedded metadata parsed by extraction script
+    const NODES_DATA = [
+  {
+    "id": "M0",
+    "title": "Repository Setup",
+    "filePath": "nodes/M0_repo_setup.md",
+    "dependencies": [],
+    "category": "SETUP",
+    "week": 1,
+    "estimatedTime": "45 minutes"
+  },
+  {
+    "id": "M1A",
+    "title": "Open a UDP Socket and Receive Raw Bytes",
+    "filePath": "nodes/M1A_udp_socket.md",
+    "dependencies": [
+      "M0"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M1B",
+    "title": "Parse the DNS Header Section",
+    "filePath": "nodes/M1B_parse_header.md",
+    "dependencies": [
+      "M1A"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M1C",
+    "title": "Parse the Question Section (Domain Name Labels)",
+    "filePath": "nodes/M1C_parse_question.md",
+    "dependencies": [
+      "M1B"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M1D",
+    "title": "Handle DNS Name Compression",
+    "filePath": "nodes/M1D_compression.md",
+    "dependencies": [
+      "M1C"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M1E",
+    "title": "Write the DNS Response Header",
+    "filePath": "nodes/M1E_write_header.md",
+    "dependencies": [
+      "M1D"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M1F",
+    "title": "Write the Question Section",
+    "filePath": "nodes/M1F_write_question.md",
+    "dependencies": [
+      "M1E"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M1G",
+    "title": "Write the Answer Section",
+    "filePath": "nodes/M1G_write_answer.md",
+    "dependencies": [
+      "M1F"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M2A",
+    "title": "Forwarding Server (Upstream Resolver)",
+    "filePath": "nodes/M2A_forwarder.md",
+    "dependencies": [
+      "M1G"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M2B",
+    "title": "SQLite Query Logger",
+    "filePath": "nodes/M2B_logger.md",
+    "dependencies": [
+      "M2A"
+    ],
+    "category": "PILLAR 1 — DNS SERVER",
+    "week": 1,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M3A",
+    "title": "Dataset Download and Exploratory Data Analysis",
+    "filePath": "nodes/M3A_dataset_eda.md",
+    "dependencies": [
+      "M2B"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M3B",
+    "title": "Implement Shannon Entropy Feature",
+    "filePath": "nodes/M3B_entropy_feature.md",
+    "dependencies": [
+      "M3A"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M3C",
+    "title": "Implement Remaining Feature Functions",
+    "filePath": "nodes/M3C_remaining_features.md",
+    "dependencies": [
+      "M3B"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M3D",
+    "title": "Time Window Aggregation Features",
+    "filePath": "nodes/M3D_time_windows.md",
+    "dependencies": [
+      "M3C"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M3E",
+    "title": "Preprocessing, Scaling, and Train/Test Split",
+    "filePath": "nodes/M3E_preprocessing.md",
+    "dependencies": [
+      "M3D"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M4A",
+    "title": "Live Feature Scorer",
+    "filePath": "nodes/M4A_live_scorer.md",
+    "dependencies": [
+      "M2B",
+      "M3C"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M4B",
+    "title": "Synthetic Tunneling Attack Simulator",
+    "filePath": "nodes/M4B_tunnel_sim.md",
+    "dependencies": [
+      "M4A"
+    ],
+    "category": "PILLAR 2 — DATA PIPELINE",
+    "week": 2,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M5A",
+    "title": "Random Forest Classifier",
+    "filePath": "nodes/M5A_random_forest.md",
+    "dependencies": [
+      "M3E"
+    ],
+    "category": "PILLAR 2 — ML PHASE 1",
+    "week": 2,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M5B",
+    "title": "Isolation Forest (Unsupervised Anomaly Detection)",
+    "filePath": "nodes/M5B_isolation_forest.md",
+    "dependencies": [
+      "M5A"
+    ],
+    "category": "PILLAR 2 — ML PHASE 1",
+    "week": 3,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M5C",
+    "title": "SHAP Explainability",
+    "filePath": "nodes/M5C_shap.md",
+    "dependencies": [
+      "M5B"
+    ],
+    "category": "PILLAR 2 — ML PHASE 1",
+    "week": 3,
+    "estimatedTime": "75 minutes"
+  },
+  {
+    "id": "M6A",
+    "title": "Autoencoder — Architecture and Training",
+    "filePath": "nodes/M6A_autoencoder_train.md",
+    "dependencies": [
+      "M3E"
+    ],
+    "category": "PILLAR 2 — ML PHASE 2",
+    "week": 3,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M6B",
+    "title": "Autoencoder — Threshold Tuning and Evaluation",
+    "filePath": "nodes/M6B_autoencoder_threshold.md",
+    "dependencies": [
+      "M6A"
+    ],
+    "category": "PILLAR 2 — ML PHASE 2",
+    "week": 3,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M7A",
+    "title": "Character-Level Tokenisation",
+    "filePath": "nodes/M7A_char_tokenisation.md",
+    "dependencies": [
+      "M3E"
+    ],
+    "category": "PILLAR 2 — ML PHASE 3",
+    "week": 3,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M7B",
+    "title": "1D CNN Classifier",
+    "filePath": "nodes/M7B_cnn.md",
+    "dependencies": [
+      "M7A"
+    ],
+    "category": "PILLAR 2 — ML PHASE 3",
+    "week": 4,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M7C",
+    "title": "LSTM Classifier",
+    "filePath": "nodes/M7C_lstm.md",
+    "dependencies": [
+      "M7A"
+    ],
+    "category": "PILLAR 2 — ML PHASE 3",
+    "week": 4,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M7D",
+    "title": "Final Model Comparison and Analysis",
+    "filePath": "nodes/M7D_model_comparison.md",
+    "dependencies": [
+      "M7B",
+      "M7C"
+    ],
+    "category": "PILLAR 2 — ML PHASE 3",
+    "week": 4,
+    "estimatedTime": "60 minutes"
+  },
+  {
+    "id": "M8A",
+    "title": "Streamlit Dashboard — Live Feed Tab",
+    "filePath": "nodes/M8A_dashboard_live.md",
+    "dependencies": [
+      "M2B",
+      "M4A",
+      "M5A"
+    ],
+    "category": "INTEGRATION",
+    "week": 4,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M8B",
+    "title": "Streamlit Dashboard — Model Results and Query Inspector Tabs",
+    "filePath": "nodes/M8B_dashboard_results.md",
+    "dependencies": [
+      "M8A",
+      "M5C",
+      "M6B",
+      "M7D"
+    ],
+    "category": "INTEGRATION",
+    "week": 4,
+    "estimatedTime": "90 minutes"
+  },
+  {
+    "id": "M8C",
+    "title": "README Polish and Demo Video",
+    "filePath": "nodes/M8C_readme_demo.md",
+    "dependencies": [
+      "M8B"
+    ],
+    "category": "INTEGRATION",
+    "week": 4,
+    "estimatedTime": "120 minutes"
+  }
+];
+
+    const CATEGORY_COLORS = {
+      'SETUP': '#9ca3af',
+      'PILLAR 1 — DNS SERVER': '#3b82f6',
+      'PILLAR 2 — DATA PIPELINE': '#10b981',
+      'PILLAR 2 — ML PHASE 1': '#f97316',
+      'PILLAR 2 — ML PHASE 2': '#ef4444',
+      'PILLAR 2 — ML PHASE 3': '#a855f7',
+      'INTEGRATION': '#eab308'
+    };
+
+    // Card sizes
+    const nodeWidth = 220;
+    const nodeHeight = 76;
+    const layerGap = 170;
+    const nodeGap = 50;
+
+    let nodes = [];
+    let adjList = {};
+    let revAdjList = {};
+    let transform = { x: 0, y: 0, k: 0.6 };
+
+    const svg = document.getElementById('roadmap-svg');
+    const viewportGroup = document.getElementById('viewport-group');
+    const edgesGroup = document.getElementById('edges-group');
+    const nodesGroup = document.getElementById('nodes-group');
+
+    // Initialize layout computation
+    function computeLayout() {
+      const nodeMap = {};
+      NODES_DATA.forEach(n => {
+        nodeMap[n.id] = { ...n, layer: -1, x: 0, y: 0 };
+        adjList[n.id] = [];
+        revAdjList[n.id] = [];
+      });
+
+      // Compute adjacency lists
+      NODES_DATA.forEach(n => {
+        n.dependencies.forEach(depId => {
+          if (adjList[depId]) adjList[depId].push(n.id);
+          if (revAdjList[n.id]) revAdjList[n.id].push(depId);
+        });
+      });
+
+      // Longest path from root layout
+      function getLayer(id) {
+        const node = nodeMap[id];
+        if (!node) return 0;
+        if (node.layer !== -1) return node.layer;
+        if (node.dependencies.length === 0) {
+          node.layer = 0;
+          return 0;
+        }
+        let maxDepLayer = -1;
+        node.dependencies.forEach(depId => {
+          maxDepLayer = Math.max(maxDepLayer, getLayer(depId));
+        });
+        node.layer = maxDepLayer + 1;
+        return node.layer;
+      }
+
+      NODES_DATA.forEach(n => getLayer(n.id));
+
+      // Group by layer
+      const layers = {};
+      Object.values(nodeMap).forEach(n => {
+        if (!layers[n.layer]) layers[n.layer] = [];
+        layers[n.layer].push(n);
+      });
+
+      // Sort layers by ID for deterministic visual positioning
+      Object.keys(layers).forEach(layerNum => {
+        layers[layerNum].sort((a, b) => a.id.localeCompare(b.id));
+      });
+
+      // Position coordinates
+      const centerX = 800; // Center coordinate of SVG width
+      Object.keys(layers).forEach(layerNum => {
+        const layerNodes = layers[layerNum];
+        const n = layerNodes.length;
+        const y = layerNum * layerGap + 80;
+
+        layerNodes.forEach((node, idx) => {
+          const x = centerX + (idx - (n - 1) / 2) * (nodeWidth + nodeGap) - nodeWidth / 2;
+          node.x = x;
+          node.y = y;
+        });
+      });
+
+      nodes = Object.values(nodeMap);
+    }
+
+    // Render legend dynamically
+    function renderLegend() {
+      const container = document.getElementById('legend-container');
+      Object.entries(CATEGORY_COLORS).forEach(([category, color]) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+          <div class="legend-color" style="background-color: ${color}"></div>
+          <span>${category}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    // Draw graph items
+    function renderGraph() {
+      edgesGroup.innerHTML = '';
+      nodesGroup.innerHTML = '';
+
+      // 1. Draw Edges
+      nodes.forEach(node => {
+        node.dependencies.forEach(depId => {
+          const parent = nodes.find(n => n.id === depId);
+          if (parent) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            
+            const x1 = parent.x + nodeWidth / 2;
+            const y1 = parent.y + nodeHeight;
+            const x2 = node.x + nodeWidth / 2;
+            const y2 = node.y - 6; // Offset slightly for arrowheads
+
+            // Smooth cubic bezier curves (S-shape flowcharts)
+            const midY = (y1 + y2) / 2;
+            const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+            
+            path.setAttribute('d', d);
+            path.setAttribute('class', 'edge-path');
+            path.setAttribute('marker-end', 'url(#arrow)');
+            path.dataset.from = depId;
+            path.dataset.to = node.id;
+            edgesGroup.appendChild(path);
+          }
+        });
+      });
+
+      // 2. Draw Nodes
+      nodes.forEach(node => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'node-group');
+        g.dataset.id = node.id;
+
+        const foreign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+        foreign.setAttribute('x', node.x);
+        foreign.setAttribute('y', node.y);
+        foreign.setAttribute('width', nodeWidth);
+        foreign.setAttribute('height', nodeHeight);
+
+        const color = CATEGORY_COLORS[node.category] || '#9ca3af';
+        const isCompleted = localStorage.getItem(`complete_${node.id}`) === 'true';
+
+        foreign.innerHTML = `
+          <div xmlns="http://www.w3.org/1999/xhtml" 
+               class="node-card ${isCompleted ? 'completed' : ''}" 
+               style="border-color: ${color}77;" 
+               onclick="window.location.hash = '#node/${node.id}'"
+               onmouseenter="highlightNode('${node.id}')"
+               onmouseleave="clearHighlight()">
+            <div class="node-header">
+              <span class="node-id" style="color: ${color}; border-color: ${color}44;">${node.id}</span>
+              <span class="complete-badge">✓</span>
+            </div>
+            <div class="node-title">${node.title}</div>
+          </div>
+        `;
+
+        g.appendChild(foreign);
+        nodesGroup.appendChild(g);
+      });
+    }
+
+    // Interactivity: hover highlights
+    window.highlightNode = function(id) {
+      const deps = revAdjList[id] || [];
+      const dependents = adjList[id] || [];
+      const highlightedIds = new Set([id, ...deps, ...dependents]);
+
+      const nodeElements = document.querySelectorAll('.node-group');
+      const edgeElements = document.querySelectorAll('.edge-path');
+
+      nodeElements.forEach(el => {
+        const nodeId = el.dataset.id;
+        if (highlightedIds.has(nodeId)) {
+          el.classList.add('highlighted');
+          el.classList.remove('dimmed');
+        } else {
+          el.classList.remove('highlighted');
+          el.classList.add('dimmed');
+        }
+      });
+
+      edgeElements.forEach(el => {
+        const from = el.dataset.from;
+        const to = el.dataset.to;
+        // Highlight edge if it connects directly to highlighted nodes and matches current node relationships
+        if ((from === id && highlightedIds.has(to)) || (to === id && highlightedIds.has(from))) {
+          el.classList.add('highlighted');
+          el.classList.remove('dimmed');
+          el.setAttribute('marker-end', 'url(#arrow-highlighted)');
+        } else {
+          el.classList.remove('highlighted');
+          el.classList.add('dimmed');
+          el.setAttribute('marker-end', 'url(#arrow)');
+        }
+      });
+    };
+
+    window.clearHighlight = function() {
+      const nodeElements = document.querySelectorAll('.node-group');
+      const edgeElements = document.querySelectorAll('.edge-path');
+
+      nodeElements.forEach(el => el.classList.remove('highlighted', 'dimmed'));
+      edgeElements.forEach(el => {
+        el.classList.remove('highlighted', 'dimmed');
+        el.setAttribute('marker-end', 'url(#arrow)');
+      });
+    };
+
+    // Pan and Zoom logic
+    let isDragging = false;
+    let dragStart = { x: 0, y: 0 };
+    const container = document.getElementById('svg-container');
+
+    function updateTransform() {
+      viewportGroup.setAttribute('transform', `translate(${transform.x}, ${transform.y}) scale(${transform.k})`);
+    }
+
+    container.addEventListener('mousedown', e => {
+      // Don't drag if clicking buttons or cards
+      if (e.target.closest('.node-card') || e.target.closest('button')) return;
+      isDragging = true;
+      dragStart = { x: e.clientX - transform.x, y: e.clientY - transform.y };
+    });
+
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      transform.x = e.clientX - dragStart.x;
+      transform.y = e.clientY - dragStart.y;
+      updateTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    container.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = 1.08;
+      const nextK = e.deltaY < 0 ? transform.k * zoomFactor : transform.k / zoomFactor;
+      
+      // Limit zoom
+      if (nextK < 0.05 || nextK > 3.0) return;
+
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Center zooming around pointer coordinates
+      const svgX = (mouseX - transform.x) / transform.k;
+      const svgY = (mouseY - transform.y) / transform.k;
+
+      transform.k = nextK;
+      transform.x = mouseX - svgX * transform.k;
+      transform.y = mouseY - svgY * transform.k;
+
+      updateTransform();
+    }, { passive: false });
+
+    // Fit Graph View to screen dynamically
+    window.resetView = function() {
+      const rect = svg.getBoundingClientRect();
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+      nodes.forEach(n => {
+        if (n.x < minX) minX = n.x;
+        if (n.x + nodeWidth > maxX) maxX = n.x + nodeWidth;
+        if (n.y < minY) minY = n.y;
+        if (n.y + nodeHeight > maxY) maxY = n.y + nodeHeight;
+      });
+
+      const graphWidth = maxX - minX;
+      const graphHeight = maxY - minY;
+      const padding = 50;
+
+      // Scale calculations
+      const scaleX = (rect.width - padding * 2) / graphWidth;
+      const scaleY = (rect.height - padding * 2) / graphHeight;
+      const scale = Math.min(scaleX, scaleY, 1.0);
+
+      // Centered positions
+      const x = (rect.width - graphWidth * scale) / 2 - minX * scale;
+      const y = (rect.height - graphHeight * scale) / 2 - minY * scale;
+
+      transform = { x, y, k: scale };
+      updateTransform();
+    };
+
+    // Client-side routing
+    function handleRouting() {
+      const hash = window.location.hash;
+      const graphView = document.getElementById('graph-view');
+      const detailView = document.getElementById('detail-view');
+
+      if (hash.startsWith('#node/')) {
+        const nodeId = hash.split('/')[1];
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) {
+          graphView.style.display = 'none';
+          detailView.style.display = 'block';
+          loadDetailView(node);
+        } else {
+          // Bad node ID, return to graph
+          window.location.hash = '';
+        }
+      } else {
+        detailView.style.display = 'none';
+        graphView.style.display = 'flex';
+        // Refresh completions on graph when coming back
+        renderGraph();
+        // Recenter view to prevent offset discrepancies
+        setTimeout(resetView, 100);
+      }
+    }
+
+    // Detail page logic
+    function loadDetailView(node) {
+      document.getElementById('detail-node-title').innerText = `${node.id} — ${node.title}`;
+      
+      const categoryColor = CATEGORY_COLORS[node.category] || '#9ca3af';
+      const catBadge = document.getElementById('detail-node-category');
+      catBadge.innerText = node.category;
+      catBadge.style.color = categoryColor;
+
+      // Load static metadata fields
+      document.getElementById('meta-time').innerText = node.estimatedTime;
+      document.getElementById('meta-week').innerText = `Week ${node.week}`;
+      document.getElementById('meta-deps').innerText = node.dependencies.length > 0 ? node.dependencies.join(', ') : 'None';
+
+      // Mark complete checkbox state
+      const checkbox = document.getElementById('complete-checkbox');
+      checkbox.checked = localStorage.getItem(`complete_${node.id}`) === 'true';
+      
+      // Update checkmark state handler
+      checkbox.onchange = function() {
+        localStorage.setItem(`complete_${node.id}`, checkbox.checked);
+      };
+
+      // Set up Linear navigation buttons
+      const currentIndex = nodes.findIndex(n => n.id === node.id);
+      
+      const prevNode = currentIndex > 0 ? nodes[currentIndex - 1] : null;
+      const prevBtn = document.getElementById('prev-node-btn');
+      if (prevNode) {
+        prevBtn.disabled = false;
+        document.getElementById('prev-node-title').innerText = `${prevNode.id}: ${prevNode.title}`;
+        prevBtn.onclick = () => window.location.hash = `#node/${prevNode.id}`;
+      } else {
+        prevBtn.disabled = true;
+        document.getElementById('prev-node-title').innerText = 'None';
+      }
+
+      const nextNode = currentIndex < nodes.length - 1 ? nodes[currentIndex + 1] : null;
+      const nextBtn = document.getElementById('next-node-btn');
+      if (nextNode) {
+        nextBtn.disabled = false;
+        document.getElementById('next-node-title').innerText = `${nextNode.id}: ${nextNode.title}`;
+        nextBtn.onclick = () => window.location.hash = `#node/${nextNode.id}`;
+      } else {
+        nextBtn.disabled = true;
+        document.getElementById('next-node-title').innerText = 'None';
+      }
+
+      // Fetch and render markdown file
+      const container = document.getElementById('markdown-container');
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading task description...</div>';
+
+      fetch(node.filePath)
+        .then(res => {
+          if (!res.ok) throw new Error(`Could not fetch ${node.filePath}`);
+          return res.text();
+        })
+        .then(text => {
+          // Render markdown
+          container.innerHTML = marked.parse(text);
+
+          // Post process interactive checkboxes in markdown body
+          const cbs = container.querySelectorAll('input[type="checkbox"]');
+          cbs.forEach((cb, index) => {
+            cb.removeAttribute('disabled');
+            const subtaskKey = `subtask_${node.id}_${index}`;
+            cb.checked = localStorage.getItem(subtaskKey) === 'true';
+            cb.addEventListener('change', () => {
+              localStorage.setItem(subtaskKey, cb.checked);
+            });
+          });
+        })
+        .catch(err => {
+          container.innerHTML = `
+            <div class="loading-error">
+              <h3>Error Loading Task Details</h3>
+              <p>${err.message}</p>
+              <p style="font-size: 13px; margin-top: 8px;">Make sure you are serving this folder with a local server (e.g. <code>python -m http.server 8000</code>) instead of opening the HTML file directly in the browser.</p>
+            </div>
+          `;
+        });
+    }
+
+    // App Initialization
+    window.addEventListener('load', () => {
+      computeLayout();
+      renderLegend();
+      renderGraph();
+      handleRouting();
+      
+      // Initial fit-to-screen
+      setTimeout(resetView, 100);
+    });
+
+    window.addEventListener('hashchange', handleRouting);
+    window.addEventListener('resize', resetView);
+  </script>
+</body>
+</html>
